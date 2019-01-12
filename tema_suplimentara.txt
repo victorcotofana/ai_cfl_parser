@@ -1,0 +1,90 @@
+Contruiti o gramatica independenta de context care are maxim m reguli si parseaza toate mesajele.
+
+
+INPUT: 	n mesaje (secvente de cuvinte separate prin spatiu)
+		ar fi bine sa fie citite din fisier
+		m = nr maxim de reguli 
+		
+OUTPUT: O gramatica independenta de context care are maxim m reguli si care parseaza toate mesajele. 
+		Daca nu exista o astfel de gramatica, returnam o gramatica care parseaza cat mai multe mesaje posibile in limita a m reguli, I guess.
+		
+Tranzitii: 	- adaugarea/eliminarea unei reguli
+			- adaugarea/eliminarea unui simbol dintr-o regula
+			- ??? schimba simbol stanga
+			
+			
+Reprezentarea regulilor: dictionare?
+
+Necesar sa avem crearea si parsarea regulilor
+
+
+Gramatica independenta de context:
+
+Pe scurt: cand o tranzitie (A -> a) poate fi facuta oricand, contextul neavand influenta asupra ei. Contextul insemnand tot ce e in partea stanga sau dreapta a terminalului/neterminalului.
+
+Useful links: 	https://www.youtube.com/watch?v=5lXAjh4mdnY
+				https://en.wikipedia.org/wiki/Context-free_grammar
+				
+M-am gandit la urmatorul algoritm:
+
+1) Generarea a celei mai simple gramatici, formate doar din reguli de forma: A -> aB|a (A,B neterminali, a terminal). Cand parsezi un mesaj nou, adica o propozitie noua, pui primul cuvant in primul neterminal, apoi reguli din nou.
+
+2) Compresarea regulilor generate la numarul maxim m de reguli cerute la input. 
+Aici iai in considerare si regulile de forma: A -> aB|aC.
+Posibile compresari: un neterminal nu mai apare in alta regula si doua reguli pot fi compresate intr-una.
+Take notice:
+- Nr de reguli (cate tuple in cod): Compresezi pana cand numarul de reguli e nr dorit, nu compresezi maximum posibil
+- Terminalii toti sa fie unici
+
+3) Daca numarul final de reguli nu este cel dorit, se reia algoritmul dar ca de data aceasta cu un mesaj mai putin la input, adica fara ultima propozitie.
+
+EXEMPLU:
+
+INPUT: "I will get there by a plane or by a car"
+	
+1) Generarea a celei mai simple gramatici:
+(Notam neterminalii cu $ si un numar)
+
+'$0': [('I', '$1')]
+'$1': [('will', '$2')]
+'$2': [('get', '$3')]
+'$3': [('there', '$4')]
+'$4': [('by', '$5')]
+'$5': [('a', '$6')]
+'$6': [('plane', '$7')]
+'$7': [('or', '$8')]
+'$8': [('by', '$9')]
+'$9': [('a', '$10')]
+'$10': [('car',)]
+
+2) Compresarea regulilor:
+De exemplu $0 : [("I", "$1")] si $1 : [("will", "$2")] pot deveni $0 : [("I will", "$2")]. 
+
+
+Terminalii toti sa fie unici: (adica sa nu fie reguli de genu: A -> aB si C -> aD, doar A -> aB|aD)
+'$0': [('I', '$1')]
+'$1': [('will', '$2')]
+'$2': [('get', '$3')]
+'$3': [('there', '$4')]
+'$4': [('by', '$5')]
+'$5': [('a', '$6')] ===> '$5': [('a', '$6'), ('a', '$10')]
+'$6': [('plane', '$7')]
+'$7': [('or', '$8')]
+'$8': [('by', '$9')] ===> '$8': [('by', '$5')] # exact ca $4
+'$9': [('a', '$10')] ===> # este deja un neterminal ca asta mai sus 
+							astfel regula este asignata neterminalului, luand primul de sus sin jos
+'$10': [('car',)]
+
+Cand stergi o regula, adica faci merge intre doua reguli, verifici ca neterminalul (cheia care o stergi) sa fie redirectionata la noul neterminal, ca in cazul de mai sus $9 a disparut, si ('by', '$9') a devenit ('by', '$5') care exista deja. Odata ce il stergem trebuie sa redirectionam iar $8.
+
+'$0': [('I', '$1')]
+'$1': [('will', '$2')]
+'$2': [('get', '$3')]
+'$3': [('there', '$4')]
+'$4': [('by', '$5')]
+'$5': [('a', '$6'), ('a', '$10')]
+'$6': [('plane', '$7')]
+'$7': [('or', '$8')] ===> '$7': [('or', '$4')] # redirectionat la noul neterminal
+'$8': [('by', '$5')] ===> Sters 
+'$10': [('car',)]
+
