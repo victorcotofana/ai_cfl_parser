@@ -3,7 +3,7 @@ def read_from_file(file_name):
     with open(file_name) as fd:
         messages = fd.read().replace('\n', '').split('.')
     messages = list(map(lambda message: message.strip(), messages))
-    # print(messages[:-1])
+
     return messages[:-1]
 
 
@@ -15,14 +15,22 @@ def print_dict(dictionary):
             print('\'' + key + '\':', dictionary[key])
 
 
+def count_rules(grammar):
+    no_rules = 0
+    for nonterminal in grammar:
+        no_rules += len(grammar[nonterminal])
+    return no_rules
+
+
 def generate_simple_grammar(messages):
     nonterminal_count = 0
     new_grammar = {}
     for message in messages:
         for index, word in enumerate(message.split(' ')):
-            # print(index, word)
             current_nonterminal = '$' + str(nonterminal_count)
-            if index is 0:  # primul cuvant din mesaj mereu va incepe din primul neterminal
+
+            # primul cuvant din mesaj mereu va incepe din primul neterminal
+            if index is 0:
                 nonterminal_count += 1
                 next_nonterminal = '$' + str(nonterminal_count)
                 if new_grammar.get('$0') is None:
@@ -37,7 +45,6 @@ def generate_simple_grammar(messages):
                         new_grammar[current_nonterminal] = [[word, None]]
                     else:
                         new_grammar[current_nonterminal] = [[word, next_nonterminal]]
-    # print_dict(grammar)
     return new_grammar
 
 
@@ -65,6 +72,8 @@ def unique_terminals(grammar_to_change):
                 for new_rules in grammar_to_change[nonterminal_to_delete]:
                     if new_rules not in grammar_to_change[nonterminal_to_add]:
                         grammar_to_change[nonterminal_to_add] = grammar_to_change[nonterminal_to_add] + [new_rules]
+
+                # sunt doua reguli la fel
                 grammar_to_change[nonterminal_to_delete] = None
                 none_keys.append(nonterminal_to_delete)
 
@@ -72,41 +81,38 @@ def unique_terminals(grammar_to_change):
                 for nonterminal_to_change in grammar_to_change:
                     if grammar_to_change[nonterminal_to_change] is None:
                         continue
-
-                    if len(grammar_to_change[nonterminal_to_change][0]) > 1 \
-                            and grammar_to_change[nonterminal_to_change][0][1] == nonterminal_to_delete:
-                        grammar_to_change[nonterminal_to_change][0].pop()
-                        grammar_to_change[nonterminal_to_change][0].append(nonterminal_to_add)
+                    if grammar_to_change[nonterminal_to_change][0][1] == nonterminal_to_delete:
+                        grammar_to_change[nonterminal_to_change][0][1] = nonterminal_to_add
 
     # stergem toate cheile None
     for none_key in none_keys:
         del grammar_to_change[none_key]
-    # print_dict(grammar_to_change)
 
     return grammar_to_change
 
 
 def combine_terminals(grammar, no_max_rules):
     one_rule_modified = False
+
     # modificam one rule at a time
     while count_rules(grammar) > no_max_rules:
-        # for i in range(0, 9): # for test purposes
         # incepem de sus
         for first_nonterminal in grammar:
             for rules in grammar[first_nonterminal]:
-                if rules is None or len(rules) is 1:
+                if rules is None:
                     continue
+
                 nonterminal_to_check = rules[1]
                 if nonterminal_to_check is None:
                     continue
                 is_terminal_used = False
+
                 # tre de verificat ca alte reguli nu au deja neterminalul pe care vrem sa il merge-uim
                 for second_nonterminal in grammar:
                     if second_nonterminal == first_nonterminal:
                         continue
                     for second_rules in grammar[second_nonterminal]:
-                        if second_rules is not None and len(second_rules) > 1 \
-                                and second_rules[1] == nonterminal_to_check:
+                        if second_rules is not None and second_rules[1] == nonterminal_to_check:
                             is_terminal_used = True
                             break
                     if is_terminal_used:
@@ -130,24 +136,22 @@ def combine_terminals(grammar, no_max_rules):
                         grammar[first_nonterminal] = new_rules
                         one_rule_modified = True
                     grammar[nonterminal_to_check] = [None]
-                # print_dict(grammar)
+
+                # rules iteration
                 if one_rule_modified is True:
                     break
+
+            # nonterminal iteration
             if one_rule_modified is True:
                 break
+
         grammar = clean_grammar(grammar)
+
         if one_rule_modified is False:
             return False
         one_rule_modified = False
-    # print_dict(grammar)
+
     return grammar
-
-
-def count_rules(grammar):
-    no_rules = 0
-    for nonterminal in grammar:
-        no_rules += len(grammar[nonterminal])
-    return no_rules
 
 
 def clean_grammar(grammar):
@@ -161,6 +165,9 @@ def clean_grammar(grammar):
 
 
 def get_best_grammar(messages, no_max_rules):
+    if len(messages) is 0:
+        return False
+
     simple_grammar = generate_simple_grammar(messages)
     best_grammar = grammar_compression(simple_grammar, no_max_rules)
     if best_grammar is False:
@@ -169,6 +176,33 @@ def get_best_grammar(messages, no_max_rules):
         return best_grammar
 
 
+def parse_messages_with_grammar(messages, grammar):
+    for message in messages:
+        print(message, ':')
+        mutable_message = message[:]
+        next_nonterminal = ['$0']
+
+        while mutable_message is not '':
+            rule_was_applied = False
+
+            for iterable_nonterminal in grammar:
+                for rule in grammar[iterable_nonterminal]:
+                    if mutable_message.startswith(str(rule[0])) and iterable_nonterminal in next_nonterminal:
+                        print(iterable_nonterminal, '->', rule[0], rule[1])
+                        next_nonterminal = [rule[1] for rule in grammar[iterable_nonterminal]]
+
+                        if len(rule[0]) is len(mutable_message):
+                            mutable_message = ''
+                        else:
+                            mutable_message = mutable_message[len(rule[0])+1:]
+                        rule_was_applied = True
+                        break
+                if rule_was_applied is True:
+                    break
+
+
 input_messages = read_from_file('input.txt')
-# print_dict(get_best_grammar(input_messages, 10))  # full grammar
-print_dict(get_best_grammar(input_messages, 3))  # minimal grammar
+best_grammar = get_best_grammar(input_messages, 3)
+print_dict(best_grammar)
+print()
+parse_messages_with_grammar(input_messages, best_grammar)
